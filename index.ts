@@ -8,6 +8,19 @@ app.use(express.urlencoded({ extended: true }));
 dotenv.config()
 const PORT = process.env.PORT || 4001;
 
+import redisClient, { connectRedis } from './src/utils/redis';
+async function initApp() {
+  try {
+    await connectRedis();
+    const result = await redisClient.ping();
+    console.log('Redis is working! PING =>', result);
+  } catch (err) {
+    console.error('Redis connection failed:', err);
+  }
+}
+
+initApp();
+
 
 app.get('/',(req:Request, res:Response) =>{
 	

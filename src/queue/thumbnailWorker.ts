@@ -3,14 +3,16 @@ import sequelize from '../db/Connection';
 import { Op, QueryTypes } from 'sequelize';
 import { FileAttributes } from '../models/files.model';
 import { deleteObject } from '../utils/s3Client';
+import redisClient from '../utils/redis';
 
 
 
 
 
-const deleteFiles = async (ids: number[]) => {
+const deleteFiles = async (ids: number[], userId: number) => {
 	try {
 		console.log("ids ", ids)
+		console.log("user id ", userId)
 
 		const query = `SELECT id, file_uid , s3_key, thumbnail_key FROM file_attributes WHERE id IN (${ids.join(',')})`
 		const readResponse = await sequelize.query(query, {
@@ -62,7 +64,6 @@ const deleteFiles = async (ids: number[]) => {
 		}
 
 
-		// await redisClient.incr(`user:fileDataVersion:${userId}`);
 
 	} catch (error) {
 		console.log(error)
@@ -70,11 +71,15 @@ const deleteFiles = async (ids: number[]) => {
 }
 
 export const worker = new Worker('delete-files-permanently', async job => {
-	const { fileIds } = job.data;
+	const { fileIds, userId } = job.data;
 	console.log("Processing job for fileId:", fileIds);
 	// const ids = fileIds.map(Number)
-	await deleteFiles(fileIds)
-
+	await deleteFiles(fileIds, userId)
+	// const current = await redisClient.get(`user:fileDataVersion:${userId}`);
+	// console.log("Current value before incr:", current);
+	// console.log("version ", version)
+	const incr = await redisClient.incr(`user:fileDeleteVersion:${userId}`);
+	console.log("Value after incr:", incr);
 
 }, {
 	connection: {
