@@ -4,8 +4,8 @@ import { Op, QueryTypes } from 'sequelize';
 import { FileAttributes } from '../models/files.model';
 import { deleteObject } from '../utils/s3Client';
 import redisClient from '../utils/redis';
-
-
+import cron from 'node-cron';
+import axios from 'axios';
 
 
 
@@ -90,3 +90,28 @@ export const worker = new Worker('delete-files-permanently', async job => {
 
 
 console.log("Thumbnail worker started and listening for jobs...");
+
+
+
+
+const urlsToPing = [
+  'https://cloudy-file.vercel.app/',
+  'https://cloudyfile-be-2qf2.onrender.com'
+];
+
+const pingServices = async () => {
+  for (const url of urlsToPing) {
+    try {
+      const res = await axios.get(url);
+      console.log(`[${new Date().toISOString()}] ✅ Pinged ${url} - Status: ${res.status}`);
+    } catch (err:any) {
+      console.error(`[${new Date().toISOString()}] ❌ Failed to ping ${url} - Error:`, err.message);
+    }
+  }
+};
+
+// ⏱ Every 14 minutes
+cron.schedule('*/14 * * * *', () => {
+  console.log('🔁 Running scheduled ping...');
+  pingServices();
+});
